@@ -25,11 +25,15 @@ class Matrix(object):
 
         if other.shape == self.shape and type(other.data) == type(self.data):
             return Matrix(self.data + other.data, self.shape)
+
+        raise Exception('Must be mxn!')
     
     def __sub__(self, other):
         
         if other.shape == self.shape and type(other) == type(np.asarray([1])):
             return Matrix(self.data - other.data, self.shape, self.size)
+
+        raise Exception('Must be mxn!')
     
     def __mul__(self, other):
         
@@ -37,7 +41,9 @@ class Matrix(object):
             return Matrix(self.data*other,self.shape)
         
         if self.shape[1]  == other.shape[0]:
-            return Matrix(self.data*other.data,(self.shape[0],other.shape[1]))  
+            return Matrix(self.data.dot(other.data),(self.shape[0],other.shape[1]))  
+
+        raise Exception('Must be mxn X nxp!')
     
     def __truediv__(self, other):
         
@@ -45,7 +51,9 @@ class Matrix(object):
             return Matrix(self.data/other,self.shape)
         
         if self.shape == other.shape:
-            return Matrix(self.data / other.data, self.shape)        
+            return Matrix(self.data / other.data, self.shape)
+
+        raise Exception('Must be mxn!')
 
     def __rmul__(self, other):
         
@@ -53,8 +61,10 @@ class Matrix(object):
             return Matrix(self.data*other,self.shape)
         
         if self.shape[1]  == other.shape[0]:
-            return Matrix(self.data*other.data,(self.shape[0],other.shape[1]))
-    
+            return Matrix(other.data.dot(self.data),(other.shape[0],self.shape[1]))
+
+        raise Exception('Must be mxn X nxp!')
+
     def __rtruediv__(self, other):
         
         if type(other) == type(int(1)) or type(other) == type(float(1)):
@@ -62,9 +72,12 @@ class Matrix(object):
         
         if self.shape == other.shape:
             return Matrix(self.data / other.data, self.shape)
+
+        raise Exception('Must be mxn!')
+
         
     def __str__(self):
-        return 'Matrix(%s)' % str(self.data)
+        return '%s' % str(self.data)
 
     def __hash__(self):
         return hash(Matrix(self.data, self.shape))
@@ -76,6 +89,10 @@ class Matrix(object):
         
         if len(self.data[item]) > 1:
             return Matrix(self.data[item],self.data[item].shape)
+        elif len(self.data[item]) == 1:
+            return Matrix(self.data[item],self.data[item].shape)
+        else:
+            raise Exception('Cannot get the matrix values! Out of bounds error!')
 
     def size(self):
 
@@ -124,6 +141,25 @@ class Matrix(object):
         inv = np.linalg.inv(self.data)
         return Matrix(inv,inv.shape)
 
+    def pseudo_inverse(self):
+        
+        pinv = np.linalg.pinv(self.data)
+        return Matrix(pinv,pinv.shape)
+
+    def cholesky(self):
+
+        ch = np.linalg.cholesky(self.data)
+        return Matrix(ch,ch.shape)
+
+    def cond(self):
+
+        return np.linalg.cond(self.data)
+
+    def qr(self,mode='reduced'):
+        
+        M = np.linalg.qr(self.data,mode)
+        return Matrix(M,M.shape)
+    
     def transpose(self):
         
         t = self.data.T
@@ -137,13 +173,13 @@ class Matrix(object):
         n = np.linalg.norm(self.data)
         return n
 
-    def matmul(self, matrix):
+    def matmul(self,matrix):
         
         prod = np.matmul(self.data, matrix.data)
         return Matrix(prod,prod.shape)
 
     def reshape(self,shape):
-        np.reshape(self.data,shape)
+        return Matrix(np.reshape(self.data,shape),shape)
 
     def determinant(self):
         return np.linalg.det(self.data)
@@ -166,6 +202,37 @@ class Matrix(object):
         
         svd = np.linalg.svd(self.data)
         return Matrix(svd[0],svd[0].shape), Matrix(svd[1], svd[1].shape), Matrix(svd[2], svd[2].shape)
+
+def rank(M):
+    N = np.linalg.matrix_rank(M.data)
+    return N
+
+def power(M):
+    K = np.linalg.matrix_power(M.data)
+    return Matrix(K,K.shape)
+
+def solve(A,b):
+    
+    x = np.linalg.solve(A.data,b.data)
+    return Matrix(x,x.shape)
+
+##def lstsq(M,N):
+##
+##    val = np.linalg.lstsq(M,N)
+##    return Matrix(val,val.shape)
+
+def concatenate(a,b,axis=None):
+    if axis == None:
+        m = np.concatenate((a.data,b.data),axis=axis)
+        return Matrix(m,m.shape)
+    elif axis == 0:
+        m = np.concatenate((a.data,b.data),axis=axis)
+        return Matrix(m,m.shape)
+    elif axis == 1:
+        m = np.concatenate((a.data,b.data),axis=axis)
+        return Matrix(m,m.shape)
+    else:
+        raise Exception('Only supports axes: None, 0, and 1')
         
 def asmatrix(python_iterable):
     
