@@ -1,29 +1,37 @@
+import numpy as np
+
 class Probability(object):
 
-    def __init__(self, probability_function, *args, **kwargs):
+     def __init__(self,X):
 
-        self.probability_function = probability_function
-        self.args = args
-        self.kwargs = kwargs
-        self.ans = None
+def factorial(n):
+    if n <= 0:
+       return 1
+    return factorial(n-1)*n;
 
-        if probability_function == None or args == None or kwargs == None:
-            self.probability_function = None
-            self.args = None
-            self.kwargs = None
+def permutations_with_repetition(n,k):
+    return np.power(k,n)
 
-        if args == ():
-            self.probability_function = probability_function
-            self.args = args
-            self.kwargs = kwargs
-            self.ans = self.probability_function(**kwargs)
+def sigma_sum(arr):
+    return np.sum(arr)
 
-        if kwargs == {}:
-            self.probability_function = probability_function
-            self.args = args
-            self.kwargs = kwargs
-            self.ans = self.probability_function(*args)
+def pi_product(arr):
+    prod = 1
+    n = len(arr)
+    for i in range(n):
+        prod *= arr[i]
+    return prod
 
-        raise Exception('Please provide proper inputs!')
+def permutations_of_multi_sets(
 
-    def
+def k_combinations(n,k):
+    return int(factorial(n)/(factorial(n-k)*factorial(k)))
+
+def k_permutations(n,k):
+    return int(factorial(n)/factorial(n-k))
+
+def binomial_distribution():
+
+def basic_counting(m,n):
+    return m*n
+

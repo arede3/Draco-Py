@@ -1,6 +1,6 @@
 from logistics.system import *
 
-cd('C:\\Users\\irona\\source\\repos\\dracopy\\test\\math\\linear_algebra\\')
+cd('C:\\Users\\irona\\source\\repos\\dracopy\\Draco-Py\\test\\math\\linear_algebra\\')
 print(cwd())
 
 from linear_algebra_test import *
@@ -259,7 +259,7 @@ class Robot(object):
                          T = self.TSlist[k]
                       else:
                          T = T*self.TSlist[k]
-                  self.joints[name]['TsiS'] = T*self.T0list[i]
+                  self.joints[name]['TsiS'] = T*self.T0list[j]
                   self.TsiSlist.append(self.joints[name]['TsiS'])
                   i += 1
                   j += 1
@@ -271,7 +271,8 @@ class Robot(object):
         joint_names = list(self.joints.keys())[1:len(self.joints)-1]
         i = 0
         j = 1
-        for name in joint_names: 
+        for name in joint_names:
+                
             if name != 'world_joint' or name != 'ee_joint':
                if name == 'joint1':
                   [omega,v] = self.compute_omega_and_v_from_V(self.Blist[i])
@@ -295,7 +296,7 @@ class Robot(object):
                          T = self.TBlist[k]
                       else:
                          T = T*self.TBlist[k]
-                  self.joints[name]['TsiB'] = self.T0list[i]*T
+                  self.joints[name]['TsiB'] = self.T0list[j]*T
                   self.TsiBlist.append(self.joints[name]['TsiB'])
                   i += 1
                   j += 1
