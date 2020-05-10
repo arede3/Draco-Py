@@ -1,5 +1,7 @@
 import numpy as np
-
+pi = np.pi
+e = np.exp(1)
+inf = np.inf
 class Matrix(object):
 
     def __init__(self, data, shape, dtype=np.float64):
@@ -9,7 +11,13 @@ class Matrix(object):
         self.data.shape = self.shape
         self.T = None
         self.dtype = dtype
+        
+    def __neg__(self):
+        return Matrix(-self.data,self.data.shape)
 
+    def __pos__(self):
+        return Matrix(+self.data,self.data.shape)
+    
     def __repr__(self):
         return str(self)
         
@@ -23,15 +31,15 @@ class Matrix(object):
 
     def __add__(self, other):
 
-        if other.shape == self.shape and type(other.data) == type(self.data):
+        if other.shape == self.shape:
             return Matrix(self.data + other.data, self.shape)
 
         raise Exception('Must be mxn!')
     
     def __sub__(self, other):
         
-        if other.shape == self.shape and type(other) == type(np.asarray([1])):
-            return Matrix(self.data - other.data, self.shape, self.size)
+        if other.shape == self.shape:
+            return Matrix(self.data - other.data, self.shape)
 
         raise Exception('Must be mxn!')
     
@@ -179,7 +187,10 @@ class Matrix(object):
         return Matrix(prod,prod.shape)
 
     def reshape(self,shape):
-        return Matrix(np.reshape(self.data,shape),shape)
+        data = self.data
+        np.reshape(data,shape)
+        self.shape = shape
+        return Matrix([[list(data)]],shape) 
 
     def determinant(self):
         return np.linalg.det(self.data)
@@ -203,6 +214,9 @@ class Matrix(object):
         svd = np.linalg.svd(self.data)
         return Matrix(svd[0],svd[0].shape), Matrix(svd[1], svd[1].shape), Matrix(svd[2], svd[2].shape)
 
+    def __len__(self):
+        return len(self.data)
+    
 def rank(M):
     N = np.linalg.matrix_rank(M.data)
     return N
@@ -248,20 +262,148 @@ def asarray(python_iterable_or_matrix):
 
 def zeros(shape):
     
-    M = Matrix(np.zeros(shape),shape)
+    M = Matrix([[list(np.zeros(shape))]],shape)
     return M
 
-def identity(shape):
+def identity(n):
+
+    M = Matrix([[list(np.identity(n))]],(n,n))
+    return M
     
-    if shape[0] == shape[1]:
-        M = Matrix(np.identity(shape[0]),shape)
-        return M
-    
-    raise Exception('Square matrix required!\n')
+
 
 def ones(shape):
     
-    M = Matrix(np.ones(shape),shape)
+    M = Matrix([[list(np.ones(shape))]],shape)
+    return M
+
+def sin(x):
+
+    ans = np.sin(x)
+
+    if abs(ans-0.0) < 10**(-3):
+        return 0.0
+    
+    if abs(ans-1.0) < 10**(-3):
+        return 1.0
+    
+    if abs(ans+1.0) < 10**(-3):
+        return -1.0
+
+    return ans
+
+def cos(x):
+
+    ans = np.cos(x)
+
+    if abs(ans-0.0) < 10**(-3):
+        return 0.0
+    
+    if abs(ans-1.0) < 10**(-3):
+        return 1.0
+    
+    if abs(ans+1.0) < 10**(-3):
+        return -1.0
+
+    return ans
+
+def tan(x):
+
+    ans = np.tan(x)
+
+    if abs(ans-0.0) <= 10**(-3):
+        return 0.0
+    
+    if abs(ans-1.0) <= 10**(-3):
+        return 1.0
+    
+    if abs(ans+1.0) <= 10**(-3):
+        return -1.0
+
+    if ans > 10**6:
+        return inf
+
+    if ans < -10**6:
+        return -inf
+
+    return ans
+
+def cot(x):
+
+    ans = 1/np.tan(x)
+    
+    if abs(ans-0.0) <= 10**(-3):
+        return 0.0
+    
+    if abs(ans-1.0) <= 10**(-3):
+        return 1.0
+    
+    if abs(ans+1.0) <= 10**(-3):
+        return -1.0
+
+    if ans > 10**3:
+        return inf
+
+    if ans < -10**3:
+        return -inf
+
+
+    return ans
+
+def csc(x):
+
+    ans = 1/np.sin(x)
+    
+    if abs(ans-0.0) <= 10**(-3):
+        return 0.0
+    
+    if abs(ans-1.0) <= 10**(-3):
+        return 1.0
+    
+    if abs(ans+1.0) <= 10**(-3):
+        return -1.0
+
+    if ans > 10**3:
+        return inf
+
+    if ans < -10**3:
+        return -inf
+
+
+    return ans
+
+def sec(x):
+
+    ans = 1/np.cos(x)
+    
+    if abs(ans-0.0) <= 10**(-3):
+        return 0.0
+    
+    if abs(ans-1.0) <= 10**(-3):
+        return 1.0
+    
+    if abs(ans+1.0) <= 10**(-3):
+        return -1.0
+
+    if ans > 10**10:
+        return inf
+
+    if ans < -10**10:
+        return -inf
+
+
+    return ans
+
+def linspace(x0,xf,num_points):
+    x = np.linspace(x0,xf,num_points)
+    n = len(x)
+    M = Matrix([[list(x)]],(n,1))
+    return M
+
+def logspace(x0,xf,num_points):
+    x = np.linspace(x0,xf,num_points)
+    n = len(x)
+    M = Matrix([[list(x)]],(n,1))
     return M
 
 def main():
@@ -270,7 +412,7 @@ def main():
     arr = np.asarray(arr_list)
     A = Matrix(arr,arr.shape)
     B = asmatrix(arr_list)
-    C = 2*A + 0.43*identity(A.shape)
+    C = 2*A + 0.43*identity(A.shape[0])
     print(C.tensordot(A))
 
 if __name__ == '__main__':

@@ -1,15 +1,15 @@
 from logistics.system import *
 
-cd('C:\\Users\\irona\\source\\repos\\dracopy\\Draco-Py\\test\\math\\linear_algebra\\')
+cd('C:\\Users\\irona\\source\\repos\\dracopy\\Draco-Py\\modules\\mathematics\\linear_algebra\\')
 print(cwd())
 
-from linear_algebra_test import *
+from linear_algebra import *
 import xml.etree.ElementTree as ET
 
 urdf = 'C://Users//irona//Desktop//Ohio State Graduate Degree//ECE 5463 - Introduction to Real-Time Robotics//ECE 5463 Project//ur5.urdf'
 pi = np.pi
 e = np.exp(1)
-thetalist = [pi/2,pi/3,pi/6,-pi/3,-pi/4,pi/2]
+thetalist = [pi/3,pi/2,-pi/6,pi/4,pi/2,pi/3]
 dthetalist = [1,0.3,0.5,-0.1,-0.2,-4]
 
 def string_to_number(string):
@@ -66,17 +66,18 @@ class Robot(object):
         self.Gslist = []
         self.Jji = []
         self.T0list = []
-        self.TsiSlist = []
-        self.TsiBlist = []
+        self.T0Slist = []
+        self.T0Blist = []
         self.TiSlist = []
         self.TiBlist = []
         self.TSlist = []
         self.TBlist = []
+        self.n = len(list(self.joints.values()))
         self.compute_T0()
         self.compute_Blist_and_Slist()
         self.compute_forward_kinematics_space()
-        self.compute_forward_kinematics_body()
-        self.compute_jacobian_and_twist()
+        self.modify_TBlist(self.n)
+        #self.compute_jacobian_and_twist()
     
     def load_urdf(self,urdf):
         tree = ET.parse(urdf)
@@ -119,7 +120,7 @@ class Robot(object):
                 self.joints[name] = {'type': joint_type, 'parent': parent, 'child': child, 'rpy': string_to_matrix_r3(origin_data['rpy']), 'xyz': string_to_matrix_r3(origin_data['xyz'])}
                 
     def rotation(self,omega,theta):
-        return identity((3,3)) + np.sin(theta)*self.skew(omega) + (1-np.cos(theta))*self.skew(omega)*self.skew(omega)
+        return identity((3,3)) + sin(theta)*self.skew(omega) + (1-cos(theta))*self.skew(omega)*self.skew(omega)
 
     def rpy_rotation(self,rpy):
         r = rpy[0][0]
@@ -127,7 +128,7 @@ class Robot(object):
         y = rpy[2][0]
         z_axis = Matrix([[0],[0],[1]],(3,1))
         y_axis = Matrix([[0],[1],[0]],(3,1))
-        x_axis = Matrix([[0],[0],[1]],(3,1))
+        x_axis = Matrix([[1],[0],[0]],(3,1))
         return self.rotation(z_axis,y)*self.rotation(y_axis,p)*self.rotation(x_axis,r)
 
     def skew(self,vec):
@@ -141,10 +142,39 @@ class Robot(object):
         return self.translation(p)*R4by4
 
     def g(self,omega,theta):
-        return theta*identity((3,3)) + (1-np.cos(theta))*self.skew(omega) + (theta-np.sin(theta))*self.skew(omega)*self.skew(omega)
+        return theta*identity((3,3)) + (1-cos(theta))*self.skew(omega) + (theta-sin(theta))*self.skew(omega)*self.skew(omega)
 
     def compute_p_from_Gv(self,omega,theta,v):
         return self.g(omega,theta)*v
+
+    def compute_theta_omega_v_from_T(self,T):
+        [R,p] = self.Trans_to_Rp(T)
+
+        [omega,theta] = self.rot_log(R)
+        Ginv = g(omega,theta).inverse()
+        v = Ginv*p
+        return omega,theta,v
+
+    def rot_log(self,R):
+        I = identity((3,3))
+        Rtr = R.trace()
+        omega = None
+        theta = None
+        if R == I:
+           omega = 'undefined'
+           theta = 0
+        elif Rtr == -1:
+           r11 = R[0,0]
+           r21 = R[1,0]
+           r31 = R[2,0]
+           omega = (1/sqrt(2*(1+r11)))*Matrix([[1+r11],[r21],[r31]],(3,1))
+           theta = pi
+        else:
+           theta = np.arccos(0.5*(Rtr-1))
+           skew_omega = (1/(2*sin(theta)))*(R-R.transpose())
+           omega = Matrix([[skew_omega[2,1]],[skew_omega[2,0]],[skew_omega[1,0]]],(3,1))
+
+        return omega,theta
 
     def compute_T0(self):
         joint_names = list(self.joints.keys())
@@ -154,14 +184,12 @@ class Robot(object):
             if name == 'world_joint':
                 T0 = self.Rp_to_Trans(self.rpy_rotation(self.joints[name]['rpy']),self.joints[name]['xyz'])
                 self.T0list.append(T0)
-                self.joints[name]['T0'] = self.T0list[i]
                 i = i + 1
             else:
                 Rypr = self.rpy_rotation(self.joints[name]['rpy'])
                 p = self.joints[name]['xyz']
                 T0 = self.Rp_to_Trans(Rypr,p)
                 self.T0list.append(self.T0list[i-1]*T0)
-                self.joints[name]['T0'] = self.T0list[i]
                 i = i + 1
         
     def compute_Mlist_and_Glist(self):
@@ -173,16 +201,18 @@ class Robot(object):
         
     def compute_Blist_and_Slist(self):
         joint_names = list(self.joints.keys())[1:len(self.joints)-1]
-
+        i = 1
         for name in joint_names:
             if self.joints[name]['type'] == 'continuous' or self.joints[name]['type'] == 'revolute':
                 Bi = concatenate(self.joints[name]['axis'],Matrix([[0],[0],[0]],(3,1)),0)
                 self.Blist.append(Bi)
-                self.Slist.append(self.adjoint(self.joints[name]['T0'])*Bi)
+                self.Slist.append(self.adjoint(self.T0list[i])*Bi)
+                i += 1
             elif self.joints[name]['type'] == 'prismatic':
                 Bi = concatenate(Matrix([[0],[0],[0]],(3,1)),self.joints[name]['axis'],0)
                 self.Blist.append(Bi)
-                self.Slist.append(self.adjoint(self.joints[name]['T0'])*Bi)
+                self.Slist.append(self.adjoint(self.T0list[i])*Bi)
+                i += 1
             else:
                 continue                
 
@@ -210,14 +240,14 @@ class Robot(object):
         return concatenate(concatenate(omega_skew,zeros(omega_skew.shape),1),concatenate(v_skew,omega_skew,1),0)
 
     def compute_jacobian_and_twist(self):
-        n = len(self.TiBlist)
+        n = len(self.TBlist)
         
         for i in range(n):
             if i == 0:
                self.Js.append(self.Slist[i])
                self.Vs = self.Vs + self.Js[i]
             else:
-               self.Js.append(self.adjoint(self.TiSlist[i-1])*self.Slist[i])
+               self.Js.append(self.adjoint(self.TSlist[i-1])*self.Slist[i])
                self.Vs = self.Vs + self.Js[i]
         j = 0
         for i in range(n-1,-1,-1):
@@ -226,82 +256,112 @@ class Robot(object):
                self.Vb = self.Vb + self.Jb[j]
                j += 1
             else:
-               self.Jb.append(self.adjoint(self.TiBlist[n-1-i].inverse())*self.Blist[i])
+               self.Jb.append(self.adjoint(self.TBlist[n-1-i].inverse())*self.Blist[i])
                self.Vb = self.Vb + self.Jb[j]
                j += 1
         
     def compute_forward_kinematics_space(self):
-        joint_names = list(self.joints.keys())[1:len(self.joints)-1]
+        joint_names = list(self.joints.keys())[1:len(self.joints)]
 
         i = 0
         j = 1
         for name in joint_names: 
-            if name != 'world_joint' or name != 'ee_joint':
+            if name != 'world_joint':
                if name == 'joint1':
                   [omega,v] = self.compute_omega_and_v_from_V(self.Slist[i])
                   R = self.rotation(omega,self.thetalist[i])
                   p = self.compute_p_from_Gv(omega,self.thetalist[i],v)
-                  self.TSlist.append(self.Rp_to_Trans(R,p))
                   self.TiSlist.append(self.Rp_to_Trans(R,p))
-                  self.joints[name]['TsiS'] = self.Rp_to_Trans(R,p)*self.T0list[j]
-                  self.TsiSlist.append(self.joints[name]['TsiS'])
+                  self.TSlist.append(self.TiSlist[i]*self.T0list[j])
                   i += 1
                   j += 1
-               else:
+               elif name != 'joint1' and name != 'ee_joint':
                   [omega,v] = self.compute_omega_and_v_from_V(self.Slist[i])
                   R = self.rotation(omega,self.thetalist[i])
                   p = self.compute_p_from_Gv(omega,self.thetalist[i],v)
-                  self.TSlist.append(self.Rp_to_Trans(R,p))
-                  m = len(self.TSlist)
+                  self.TiSlist.append(self.Rp_to_Trans(R,p))
+                  m = len(self.TiSlist)
                   T = None
                   for k in range(m):
                       if k == 0:
-                         T = self.TSlist[k]
+                         T = self.TiSlist[k]
                       else:
-                         T = T*self.TSlist[k]
-                  self.joints[name]['TsiS'] = T*self.T0list[j]
-                  self.TsiSlist.append(self.joints[name]['TsiS'])
+                         T = T*self.TiSlist[k]
+                  self.TSlist.append(T*self.T0list[j])
                   i += 1
                   j += 1
+               else:
+                  m = len(self.TiSlist)
+                  T = None
+                  for k in range(m):
+                      if k == 0:
+                         T = self.TiSlist[k]
+                      else:
+                         T = T*self.TiSlist[k]
+                  self.TSlist.append(T*self.T0list[j])
+                 
+        
             
 ##    def compute_inverse_kinematics_space(self):
 ##        return
-
-    def compute_forward_kinematics_body(self):
-        joint_names = list(self.joints.keys())[1:len(self.joints)-1]
+    def modify_TBlist(self,n):
+        temp_TBlist = []
+        for i in range(1,n):
+                self.compute_forward_kinematics_body(i)
+                temp_TBlist.append(self.TBlist[i-1])
+        self.TBlist = temp_TBlist
+        
+    def compute_forward_kinematics_body(self,joint_number):
+        joint_names = list(self.joints.keys())[1:len(self.joints)]
+        
+##        for idx in range(l,0,-1):
         i = 0
         j = 1
+        n = joint_number
         for name in joint_names:
-                
-            if name != 'world_joint' or name != 'ee_joint':
+            if name != 'world_joint':
                if name == 'joint1':
-                  [omega,v] = self.compute_omega_and_v_from_V(self.Blist[i])
+                  [omega,v] = self.compute_omega_and_v_from_V(self.adjoint(self.T0list[n].inverse())*self.Slist[i])
                   R = self.rotation(omega,self.thetalist[i])
                   p = self.compute_p_from_Gv(omega,self.thetalist[i],v)
-                  self.TBlist.append(self.Rp_to_Trans(R,p))
                   self.TiBlist.append(self.Rp_to_Trans(R,p))
-                  self.joints[name]['TsiB'] = self.T0list[j]*self.Rp_to_Trans(R,p)
-                  self.TsiBlist.append(self.joints[name]['TsiB'])
+##                                  if l == 1:
+                  
+                  self.TBlist.append(self.T0list[n]*self.TiBlist[i])
                   i += 1
                   j += 1
-               else:
-                  [omega,v] = self.compute_omega_and_v_from_V(self.Blist[i])
+               elif name != 'joint1' and name != 'ee_joint':
+                  [omega,v] = self.compute_omega_and_v_from_V(self.adjoint(self.T0list[n].inverse())*self.Slist[i])
                   R = self.rotation(omega,self.thetalist[i])
                   p = self.compute_p_from_Gv(omega,self.thetalist[i],v)
-                  self.TBlist.append(self.Rp_to_Trans(R,p))
-                  m = len(self.TBlist)
+                  self.TiBlist.append(self.Rp_to_Trans(R,p))      
+                  m = len(self.TiBlist)
                   T = None
                   for k in range(m):
                       if k == 0:
-                         T = self.TBlist[k]
+                         T = self.TiBlist[k]
                       else:
-                         T = T*self.TBlist[k]
-                  self.joints[name]['TsiB'] = self.T0list[j]*T
-                  self.TsiBlist.append(self.joints[name]['TsiB'])
+                         T = T*self.TiBlist[k]
+##                                  if l == 7-i:
+
+                  self.TBlist.append(self.T0list[n]*T)
+                  
                   i += 1
                   j += 1
+               else:
+                  m = len(self.TiBlist)
+                  T = None
+                  for k in range(m):
+                      if k == 0:
+                         T = self.TiBlist[k]
+                      else:
+                         T = T*self.TiBlist[k]
+##
+                  self.TBlist.append(self.T0list[n]*T)
 
 
+                
+        
 ##    def compute_inverse_kinematics_space(self)
 ##        return
 
@@ -310,6 +370,22 @@ class Robot(object):
 ##
 ##    def compute_inverse_dynamics(self):
 ##        return
+def sqrt(x):
+    return np.sqrt(x)
+def Rlist_and_plist(robot,Tlist):
+        Rs = []
+        ps = []
 
-r = Robot(urdf, thetalist, dthetalist)       
+        for T in Tlist:
+                [R,p] = robot.Trans_to_Rp(T)
+                Rs.append(R)
+                ps.append(p)
+        return Rs,ps
+
+r = Robot(urdf, thetalist, dthetalist)
+[Rs,ps] = Rlist_and_plist(r,r.TSlist)
+[Rb,pb] = Rlist_and_plist(r,r.TBlist)
+[Rs1,Rs2,Rs3,Rs4,Rs5,Rs6,Rs7] = Rs
+[Rb1,Rb2,Rb3,Rb4,Rb5,Rb6,Rb7] = Rb
+
          

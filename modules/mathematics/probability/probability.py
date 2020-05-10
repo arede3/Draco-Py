@@ -2,7 +2,9 @@ import numpy as np
 
 class Probability(object):
 
-     def __init__(self,X):
+     def __init__(self,random_variables_list):
+          self.random_variables = None
+          
 
 def factorial(n):
     if n <= 0:
@@ -22,7 +24,8 @@ def pi_product(arr):
         prod *= arr[i]
     return prod
 
-def permutations_of_multi_sets(
+def permutations_of_multi_sets():
+     return 
 
 def k_combinations(n,k):
     return int(factorial(n)/(factorial(n-k)*factorial(k)))
@@ -31,6 +34,7 @@ def k_permutations(n,k):
     return int(factorial(n)/factorial(n-k))
 
 def binomial_distribution():
+    return
 
 def basic_counting(m,n):
     return m*n
