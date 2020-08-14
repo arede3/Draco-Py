@@ -737,10 +737,41 @@ def computeEndEffectorForces(thetaList, Ftip, MList, GList, SList):
     return computeInverseDynamics(thetaList, [0] * n, [0] * n, [0, 0, 0], Ftip, MList, GList, SList)
 
 def computeForwardDynamics(thetaList, dthetaList, tauList, gravityVector, Ftip, MList, GList, SList):
-    pass
+    M = computeMassMatrix(thetaList,MList,GList,SList)
+    c = computeCoriolisMatrix(thetaList, dthetaList, MList, GList, SList)
+    g = computeGraviyMatrix(thetaList, gravityVector, MList, GList, SList)
+    Fee = computeEndEffectorForces(thetaList, Ftip, MList, GList, SList)
+    tau = Matrix([tauList])
+    tau.reshape((len(tauList),1))
+    return M.inverse()*(tau-c-g-Fee)
 
 def computeInverseDynamics(thetaList, dthetaList, ddthetaList, gravityVector, Ftip, MList, GList, SList):
-    pass
+    n = len(thetaList)
+    Mi = identity(4)
+    Ai = zeros((6,n))
+    AdTi = [[None]] * (n+1)
+    Vi = zeros((6,n+1))
+    Vdi = zeros((6,n+1))
+    Vdi[:,0] = Matrix([[0],[0],[0],[gravityVector[0,0]],[gravityVector[1,0]],[gravityVector[2,0]]])
+    AdTi[n] = adjoint((MList[n]).inverse())
+    Fi = Matrix(Ftip)
+    tauList = [[None]] * n
+
+    for i in range(n):
+        Mi = Mi*MList[i]
+        Ai[:,i] = adjoint(Mi.inverse())*SList[i]
+        AdTi[i] = adjoint(transform(Ai[:,i],-thetaList[i])*MList[i].inverse())
+        Vi[:,i+1] = AdTi[i]*Vi[:,i] + Ai[:,i] * dthetaList[i]
+        Vdi[:,i+1] = AdTi[i]*Vd[:,i] + Ai[:,i] * ddthetaList[i] + ad(Vi[:,i+1])*Ai[:,i] * dthetaList[i]
+
+    for i in range(n-1, -1, -1):
+        AdTi.T()
+        adVi = (ad(Vi[:,i+1])).T()
+        Fi = AdTi[i+1].T*Fi + GList[i]*Vdi[:,i+1] - adVi.T*GList[i]*Vi[:,i+1]
+        Fi.T()
+        tauList[i] = Fi.T*Ai[:,i]
+
+    return tauList
 
 def computeForwardKinematicsSpace(M,SList,thetaList):
     T = identity(4)
