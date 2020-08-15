@@ -659,30 +659,30 @@ def computeBodyJacobian(BList,thetaList):
     return JbList
 
 def computeStaticsBody(JbList,Fb):
-    Jb = convertMatrixListToMatrix(JbList)
+    Jb = convertMatrixListIntoMatrix(JbList)
     Jb.T()
 
     return Jb.T*Fb
 
 def computeStaticsSpace(JsList,Fs):
-    Js = convertMatrixListToMatrix(JsList)
+    Js = convertMatrixListIntoMatrix(JsList)
     Js.T()
 
     return Js.T*Fs
 
 def checkForKinematicSingularity(JList):
-    J = convertMatrixListToMatrix(JList)
-    [m,_] = J.shape
+    J = convertMatrixListIntoMatrix(JList)
+    [m,n] = J.shape
 
     r = rank(J)
-
-    if r >= 6 or r >= m:
+    min_val = min([6,n])
+    if r < min_val:
         return True
 
     return False
 
 def computeManipulabilityEllipsoid(JList):
-    J = convertMatrixListToMatrix(JList)
+    J = convertMatrixListIntoMatrix(JList)
     J.T()
     M = J*J.T
 
@@ -698,7 +698,7 @@ def computeManipulabilityEllipsoid(JList):
     return [principalAxes, principalSemiAxesLengths, mu1, mu2, mu3]
 
 def computeForceEllipsoid(JList):
-    J = convertMatrixListToMatrix(JList)
+    J = convertMatrixListIntoMatrix(JList)
     J.T()
     M = J*J.T
     M = M.inverse()
