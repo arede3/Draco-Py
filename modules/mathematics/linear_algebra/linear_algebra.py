@@ -11,7 +11,7 @@ class Matrix(object):
         self.size = self.size()
         self.T = self.transpose
         self.dtype = dtype
-    
+        
     def __neg__(self):
         return Matrix(-self.data)
 
@@ -145,12 +145,6 @@ class Matrix(object):
         
         tensordot = np.tensordot(self.data, matrix.data, axes)
         return Matrix(tensordot)
-
-    def diagonal(self):
-        pass
-
-    def sum(self):
-        pass
     
     def multiply(self, matrix):
         
@@ -499,6 +493,9 @@ def convertMatrixListIntoMatrix(MatrixList):
 def nearZero(u):
     return abs(u) < 1e-6
 
+def normalize(v):
+    return v / v.norm()
+
 def skew3(omega):
     return Matrix([[0,-omega[2,0],omega[1,0]],[omega[2,0],0,-omega[0,0]],[-omega[1,0],omega[0,0],0]])
 
@@ -570,6 +567,44 @@ def adjoint(T):
     adT[3:6,0:3] = skew3(p)*R
     adT[3:6,3:6] = R
     return adT
+
+def projectToSO3(M):
+    U, s, Vh = M.singular_value_decomposition()
+    R = U*Vh
+
+    if R.determinant() < 0:
+        R[:, s[2,2]] = -R[:, s[2,2]]
+
+    return R
+
+def projectToSE3(M):
+    return RpToTrans(projectToSO3(M[0:3,0:3]),M[0:3,3])
+
+def distanceToSO3(M):
+    if M.determinant() > 0:
+        M.T()
+        return (M.T*M - identity(3)).norm()
+    else:
+        return 1e+9
+
+def distanceToSE3(M):
+    R = M[0:3,0:3]
+    I = identity(4)
+    R.T()
+    if R.determinant() > 0:
+        M[0:3,0:3] = R.T*R
+        M[0:3,3] = zeros((3,1))
+        M[3,:] = M[3,:]
+        
+        return (M-I).norm()
+    else:
+        return 1e+9
+
+def testIfSO3(M):
+    return abs(distanceToSO3(M)) < 1e-3
+
+def testIfSE3(M):
+    return abs(distanceToSE3(M)) < 1e-3
 
 def mftoF(m,f):
     F = zeros((6,1))
@@ -683,36 +718,76 @@ def checkForKinematicSingularity(JList):
 
 def computeManipulabilityEllipsoid(JList):
     J = convertMatrixListIntoMatrix(JList)
-    J.T()
-    M = J*J.T
-
-    eig_vals = M.eigen_values()
-    eig_vecs = M.eigen_vectors()
-
-    principalSemiAxesLengths = Matrix(np.sqrt(eig_vals.data))
-    principalAxes = eig_vecs
-    mu1 = float(max(principalSemiAxesLengths.data))/float(min(principalSemiAxesLengths.data))
-    mu2 = mu1**2
-    mu3 = float(np.sqrt(M.determinant()))
     
-    return [principalAxes, principalSemiAxesLengths, mu1, mu2, mu3]
+    [Jomega,Jv] = [J[0:3,:],J[3:6,:]]
+    Jomega.T()
+    Jv.T()
+
+    A1 = Jomega*Jomega.T
+    A2 = Jv*Jv.T
+    
+    eigvals1 = A1.eigen_values()
+    eigvecs1 = A1.eigen_vectors()
+    eigvals2 = A2.eigen_values()
+    eigvecs2 = A2.eigen_vectors()
+
+    lambda1Max = max(np.float64(eigvals1.data))
+    lambda2Max = max(np.float64(eigvals2.data))
+
+    lambda1Min = min(np.float64(eigvals1.data))
+    lambda2Min = min(np.float64(eigvals2.data))
+
+    mu1 = float(np.sqrt(lambda1Max/lambda1Min))
+    mu2 = mu1**2
+    mu3 = float(np.sqrt(A1.determinant()))
+
+    muList1 = [mu1,mu2,mu3]
+
+    mu1 = float(np.sqrt(lambda2Max/lambda2Min))
+    mu2 = mu1**2
+    mu3 = float(np.sqrt(A2.determinant()))
+
+    muList2 = [mu1,mu2,mu3]
+
+    return [[A1,eigvals1,eigvecs1,muList1],[A2,eigvals2,eigvecs2,muList2]]
 
 def computeForceEllipsoid(JList):
     J = convertMatrixListIntoMatrix(JList)
-    J.T()
-    M = J*J.T
-    M = M.inverse()
-
-    eig_vals = M.eigen_values()
-    eig_vecs = M.eigen_vectors()
-
-    principalSemiAxesLengths = Matrix(np.sqrt(eig_vals.data))
-    principalAxes = eig_vecs
-    mu1 = float(max(principalSemiAxesLengths.data))/float(min(principalSemiAxesLengths.data))
-    mu2 = mu1**2
-    mu3 = float(np.sqrt(M.determinant()))
     
-    return [principalAxes, principalSemiAxesLengths, mu1, mu2, mu3]
+    [Jomega,Jv] = [J[0:3,:],J[3:6,:]]
+    Jomega.T()
+    Jv.T()
+
+    A1 = Jomega*Jomega.T
+    A2 = Jv*Jv.T
+
+    A1inv = A1.inverse()
+    A2inv = A2.inverse()
+    
+    eigvals1 = A1inv.eigen_values()
+    eigvecs1 = A1inv.eigen_vectors()
+    eigvals2 = A2inv.eigen_values()
+    eigvecs2 = A2inv.eigen_vectors()
+
+    lambda1Max = max(np.float64(eigvals1.data))
+    lambda2Max = max(np.float64(eigvals2.data))
+
+    lambda1Min = min(np.float64(eigvals1.data))
+    lambda2Min = min(np.float64(eigvals2.data))
+
+    mu1 = float(np.sqrt(lambda1Max/lambda1Min))
+    mu2 = mu1**2
+    mu3 = float(np.sqrt(A1.determinant()))
+
+    muList1 = [mu1,mu2,mu3]
+
+    mu1 = float(np.sqrt(lambda2Max/lambda2Min))
+    mu2 = mu1**2
+    mu3 = float(np.sqrt(A2.determinant()))
+
+    muList2 = [mu1,mu2,mu3]
+
+    return [[A1inv,eigvals1,eigvecs1,muList1],[A2inv,eigvals2,eigvecs2,muList2]]
 
 def computeMassMatrix(thetaList,MList,GList,SList):
     n = len(thetaList)
@@ -955,6 +1030,114 @@ def computeVelocityKinematicsBody(JbList,thetaDotList):
 
     return Vb
 
+def eulerStep(thetaList,dthetaList,ddthetaList,dt):
+    theta = asMatrix([thetaList])
+    dtheta = asMatrix([dthetaList])
+    ddtheta = asMatrix([ddthetaList])
+    
+    theta += dtheta*float(dt)
+    dtheta += ddtheta*float(dt)
+
+    thetaList = asPythonList(theta)
+    dthetaList = asPythonList(dtheta)
+    
+    return [thetaList[0],dthetaList[0]]
+
+def computeInverseDynamicsTrajectory(thetaMat,dthetaMat,ddthetaMat,gravityVector,FtipMat,MList,GList,SList):
+    thetaMat = thetaMat.T()
+    dthetaMat = dthetaMat.T()
+    ddthetaMat = ddthetaMat.T()
+    FtipMat = FtipMat.T()
+    tauMat = thetaMat
+
+    for i in range(thetaMat.shape[1]):
+        tauMat[:,i] =  InverseDynamics(thetaMat[:,i], dthetaMat[:,i], ddthetaMat[:,i], gravityVector, FtipMat[:,i], MList, GList, SList)
+
+    tauMat = tauMat.T()
+    return tauMat
+
+def computeForwardDynamicsTrajectory(thetaList,dthetaList,tauMat,gravityVector,FtipMat,MList,GList,SList,dt,intRes):
+    tauMat = tauMat.T()
+    FtipMat = FTipMat.T()
+    thetaMat = tauMat
+    thetaMat[:,0] = thetaList
+    dthetaMat = tauMat
+    dthetaMat[:,0] = dthetaList
+
+    for i in range(tauMat.shape[1] - 1):
+        for j in range(intRes):
+            ddthetaList = ForwardDynamics(thetaList, dthetaList, tauMat[:,i], gravityVector, FtipMat[:,i], MList, GList, SList)
+            thetaList,dThetaList = EulerStep(thetaList, dthetaList, ddthetaList, 1.0*dt/intRes)
+        thetaMat[:,i+1] = thetaList
+        dthetaMat[:,i+1] = dthetaList
+
+    thetaMat = thetaMat.T()
+    dthetaMat = dthetaMat.T()
+    return [thetaMat, dthetaMat]
+
+def cubicTimeScaling(Tf,t):
+    return 3 * (1.0 * t/Tf)**2 - 2 * (1.0 * t/Tf)**3
+
+def quinticTimeScaling(Tf,t):
+    return 10 * (1.0 * t/Tf)**3 - 15 * (1.0 * t/Tf)**4 + 6 * (1.0 * t/Tf)**5
+
+def jointTrajectory(thetaStart,thetaEnd,Tf,N,method):
+    N = int(N)
+    timeGap = Tf / (N-1.0)
+    traj = zeros((len(thetaStart), N))
+
+    for i in range(N):
+        if method == 3:
+            s = cubicTimeScaling(Tf, timeGap * i)
+        else:
+            s = quinticTimeScaling(Tf, timeGap * i)
+
+        traj[:,i] = s*Matrix([thetaEnd]) + (1-s)*Matrix([thetaStart])
+    traj = traj.T()
+    return traj
+
+def screwTrajectory(XStart,XEnd,Tf,N,method):
+    N = int(N)
+    timeGap = Tf / (N-1.0)
+    traj = [[None]] * N
+    for i in range(N):
+        if method == 3:
+            s = cubicTimeScaling(Tf, timeGap * i)
+        else:
+            s = quinticTimeScaling(Tf, timeGap * i)
+        STheta = matrixLog6(XStart.inverse()*XEnd*s)
+        [SSkew,theta] = axisAngle6(STheta)
+        S = skew6ToVec6(SSkew)
+        traj[i] = XStart*transform(S,theta)
+
+    return traj
+
+def cartesianTrajectory(XStart,XEnd,Tf,N,method):
+    N = int(N)
+    timeGap = Tf / (N-1.0)
+    traj = [[None]] * N
+    RStart,pStart = TransToRp(XStart)
+    RStart.T()
+    REnd,pEnd = TransToRp(Xend)
+    REnd.T()
+    I = identity(4)
+    M = I
+    for i in range(N):
+        if method == 3:
+            s = cubicTimeScaling(Tf, timeGap * i)
+        else:
+            s = quinticTimeScaling(Tf, timeGap * i)
+        
+        omegaTheta = matrixLog3(RStart.T*REnd*s)
+        [omegaSkew,theta] = axisAngle3(omegaTheta)
+        omega = skew3ToVec3(omegaSkew)
+        M[0:3,0:3] = rotate(omega,theta)
+        M[0:3,3] = pEnd*s + (1-s)*pStart
+        traj[i] = M
+        M = I
+
+    return traj
+    
 def generateExample1Inputs():
     L1 = 0.5
     L2 = 1.5
