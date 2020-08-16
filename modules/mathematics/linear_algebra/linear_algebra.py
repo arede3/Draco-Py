@@ -260,7 +260,7 @@ class Matrix(object):
             
     def singular_value_decomposition(self,full_matrices=True,compute_uv=True,hermatian=False):
         
-        svd = np.linalg.svd(self.data,full_matrices,compute_uv,hermitian)
+        svd = np.linalg.svd(self.data,full_matrices,compute_uv,hermatian)
         M0 = Matrix(svd[0])
         M1 = Matrix(svd[1])
         M2 = Matrix(svd[2])
@@ -278,7 +278,189 @@ class Matrix(object):
             prod *= self
 
         return prod
+
+class QuantumMatrix(object):
+
+    def __init__(self,MatrixA,MatrixB,MatrixC,MatrixD):
+        self.A1 = MatrixA
+        self.A2 = MatrixB
+        self.A3 = MatrixC
+        self.A4 = MatrixD
+
+    def __add__(self,quantumMatrix):
+        A1 = self.A1 + quantumMatrix.A1
+        A2 = self.A2 + quantumMatrix.A2
+        A3 = self.A3 + quantumMatrix.A3
+        A4 = self.A4 + quantumMatrix.A4
+
+        return QuantumMatrix(A1,A2,A3,A4)
+
+    def __sub__(self,quantumMatrix):
+        A1 = self.A1 - quantumMatrix.A1
+        A2 = self.A2 - quantumMatrix.A2
+        A3 = self.A3 - quantumMatrix.A3
+        A4 = self.A4 - quantumMatrix.A4
+        
+        return QuantumMatrix(A1,A2,A3,A4)
     
+    def __mul__(self,quantumMatrix):
+        A1 = self.A1 * quantumMatrix.A1
+        A2 = self.A2 * quantumMatrix.A2
+        A3 = self.A3 * quantumMatrix.A3
+        A4 = self.A4 * quantumMatrix.A4
+
+        return QuantumMatrix(A1,A2,A3,A4)
+
+    def __truediv__(self,quantumMatrix):
+        A1 = self.A1 / quantumMatrix.A1
+        A2 = self.A2 / quantumMatrix.A2
+        A3 = self.A3 / quantumMatrix.A3
+        A4 = self.A4 / quantumMatrix.A4
+
+        return QuantumMatrix(A1,A2,A3,A4)
+
+    def __str__(self):
+        s = 'QuantumMatrix([\nA1:\n%s\n\nA2:\n%s\n\nA3:\n%s\n\nA4:\n%s])' % (self.A1,self.A2,self.A3,self.A4)
+        return s
+
+    def __repr__(self):
+        return str(self)
+    
+    def quantumRank(self):
+        r1 = rank(self.A1)
+        r2 = rank(self.A2)
+        r3 = rank(self.A3)
+        r4 = rank(self.A4)
+
+        return [r1,r2,r3,r4]
+
+    def quantumDeterminant(self):
+        d1 = self.A1.determinant()
+        d2 = self.A2.determinant()
+        d3 = self.A3.determinant()
+        d4 = self.A4.determinant()
+
+        return [d1,d2,d3,d4]
+
+    def quantumTranspose(self):
+        self.A1.T()
+        self.A2.T()
+        self.A3.T()
+        self.A4.T()
+
+    def quantumInverse(self):
+        A1inv = self.A1.inverse()
+        A2inv = self.A2.inverse()
+        A3inv = self.A3.inverse()
+        A4inv = self.A4.inverse()
+
+        return [A1inv,A2inv,A3inv,A4inv]
+
+    def quantumPseudoInverse(self):
+        A1pinv = self.A1.inverse()
+        A2pinv = self.A2.inverse()
+        A3pinv = self.A3.inverse()
+        A4pinv = self.A4.inverse()
+
+        return [A1pinv,A2pinv,A3pinv,A4pinv]
+
+    def quantumTrace(self):
+        tr1 = self.A1.trace()
+        tr2 = self.A2.trace()
+        tr3 = self.A3.trace()
+        tr4 = self.A4.trace()
+
+        return [tr1,tr2,tr3,tr4]
+
+    def quantumEigenValues(self):
+        eigVals1 = self.A1.eigen_values()
+        eigVals2 = self.A2.eigen_values()
+        eigVals3 = self.A3.eigen_values()
+        eigVals4 = self.A4.eigen_values()
+
+        return [eigVals1,eigVals2,eigVals3,eigVals4]
+
+    def quantumEigenVectors(self):
+        eigVecs1 = self.A1.eigen_vectors()
+        eigVecs2 = self.A2.eigen_vectors()
+        eigVecs3 = self.A3.eigen_vectors()
+        eigVecs4 = self.A4.eigen_vectors()
+
+        return [eigVecs1,eigVecs2,eigVecs3,eigVecs4]
+
+    def quantumSingularValueDecomposition(self):
+        svd1 = self.A1.singular_value_decomposition()
+        svd2 = self.A2.singular_value_decomposition()
+        svd3 = self.A3.singular_value_decomposition()
+        svd4 = self.A4.singular_value_decomposition()
+
+        return [svd1,svd2,svd3,svd4]
+
+    def quantumNorm(self):
+        n1 = self.A1.norm()
+        n2 = self.A2.norm()
+        n3 = self.A3.norm()
+        n4 = self.A4.norm()
+
+        return [n1,n2,n3,n4]
+
+    def quantumReshape(self,shapes):
+        [shape1,shape2,shape3,shape4] = shapes
+        self.A1.reshape(shape1)
+        self.A2.reshape(shape2)
+        self.A3.reshape(shape3)
+        self.A4.reshape(shape4)
+
+    def quantumScalarMultiple(self,scalars):
+        [a,b,c,d] = scalars
+
+        self.A1 = a*self.A1
+        self.A2 = b*self.A2
+        self.A3 = c*self.A3
+        self.A4 = d*self.A4
+
+    def quantumPower(self,powers):
+        [n1,n2,n3,n4] = powers
+
+        self.A1 = self.A1**n1
+        self.A2 = self.A2**n2
+        self.A3 = self.A3**n3
+        self.A4 = self.A4**n4
+
+    def quantumIdentity(self,nList):
+        [n1,n2,n3,n4] = nList
+
+        self.A1 = identity(n1)
+        self.A2 = identity(n2)
+        self.A3 = identity(n3)
+        self.A4 = identity(n4)
+
+    def quantumOnes(self,shapes):
+        [s1,s2,s3,s4] = shapes
+
+        self.A1 = ones(s1)
+        self.A2 = ones(s2)
+        self.A3 = ones(s3)
+        self.A4 = ones(s4)
+
+    def quantumZeros(self,shapes):
+        [s1,s2,s3,s4] = shapes
+
+        self.A1 = zeros(s1)
+        self.A2 = zeros(s2)
+        self.A3 = zeros(s3)
+        self.A4 = zeros(s4)
+
+    def quantumSplit(self):
+        return [self.A1,self.A2,self.A3,self.A4]
+
+    def quantumCombine(self,Ms):
+        [M1,M2,M3,M4] = Ms
+        self.A1 = M1
+        self.A2 = M2
+        self.A3 = M3
+        self.A4 = M4
+            
 def rank(M,tol=None,hermitian=False):
     N = np.linalg.matrix_rank(M.data,tol,hermitian)
     return N
@@ -1174,9 +1356,7 @@ def generateExample3Inputs():
     return [Tsd,M,BList,theta0List,eOmega,eV,numberOfIterations]
 
 def solveExampleProblem1():
-    
     [L1,L2,thetaList,omegasList,M,thetaDotList] = generateExample1Inputs()
-    
     
     [omegas1,omegas2,omegas3] = omegasList
     
@@ -1201,9 +1381,7 @@ def solveExampleProblem1():
     return Tee,SList,JsList,Vs
 
 def solveExampleProblem2():
-    
     [L1,L2,thetaList,omegabList,M,thetaDotList] = generateExample2Inputs()
-    
     
     [omegab1,omegab2,omegab3] = omegabList
     
@@ -1261,3 +1439,4 @@ def geometricSeries(r,n,a=1):
 # Linear Algebra for Biology
 
 # Linear Algebra for Engineering & Computer Science
+
