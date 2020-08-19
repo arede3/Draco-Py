@@ -252,14 +252,13 @@ class Matrix(object):
         M.reshape(eigen_vals.shape)
         return M
 
-    def eigen_value_general_complex_hermitian(self,UPLO='L',dtype=np.complex128):
+    def eigen_values_general_complex_hermitian(self,UPLO='L',dtype=np.complex128):
         eigen_vals = np.linalg.eigvalsh(self.data,UPLO)
         M = Matrix(eigen_vals,dtype)
         M.reshape(eigen_vals.shape)
         return M
             
     def singular_value_decomposition(self,full_matrices=True,compute_uv=True,hermatian=False):
-        
         svd = np.linalg.svd(self.data,full_matrices,compute_uv,hermatian)
         M0 = Matrix(svd[0])
         M1 = Matrix(svd[1])
@@ -460,7 +459,19 @@ class QuantumMatrix(object):
         self.A2 = M2
         self.A3 = M3
         self.A4 = M4
-            
+
+    def quantumCompute(self,functions,argsList):
+        # Matrix-Based Functions
+        [f1,f2,f3,f4] = functions
+        # Matrix-Based Arguments
+        [a1,a2,a3,a4] = argsLists 
+
+        # Matrix Solution
+        self.A1 = f1(*a1)
+        self.A2 = f2(*a2)
+        self.A3 = f3(*a3)
+        self.A4 = f4(*a4)
+        
 def rank(M,tol=None,hermitian=False):
     N = np.linalg.matrix_rank(M.data,tol,hermitian)
     return N
@@ -548,97 +559,76 @@ def sin(x):
 
     ans = np.sin(x)
 
-    if abs(ans-0.0) < 10**(-3):
+    if nearZero(ans):
         return 0.0
-    
-    if abs(ans-1.0) < 10**(-3):
-        return 1.0
-    
-    if abs(ans+1.0) < 10**(-3):
-        return -1.0
 
     return ans
 
 def cos(x):
 
     ans = np.cos(x)
-
-    if abs(ans-0.0) < 10**(-3):
+    
+    if nearZero(ans):
         return 0.0
-    
-    if abs(ans-1.0) < 10**(-3):
-        return 1.0
-    
-    if abs(ans+1.0) < 10**(-3):
-        return -1.0
 
     return ans
 
 def tan(x):
 
     ans = np.tan(x)
-
-    if abs(ans-0.0) <= 10**(-3):
+    
+    if nearZero(ans):
         return 0.0
-    
-    if abs(ans-1.0) <= 10**(-3):
-        return 1.0
-    
-    if abs(ans+1.0) <= 10**(-3):
-        return -1.0
 
-    if ans > 10**6:
+    if ans > 1e6:
         return inf
 
-    if ans < -10**6:
+    if ans < -1e6:
         return -inf
-
+    
     return ans
 
 def cot(x):
 
     ans = 1/np.tan(x)
+
+    if nearZero(ans):
+        return 0.0
+
+    if ans > 1e6:
+        return inf
+
+    if ans < -1e6:
+        return -inf
     
     return ans
 
 def csc(x):
 
     ans = 1/np.sin(x)
-    
-    if abs(ans-0.0) <= 10**(-3):
-        return 0.0
-    
-    if abs(ans-1.0) <= 10**(-3):
-        return 1.0
-    
-    if abs(ans+1.0) <= 10**(-3):
-        return -1.0
 
-    if ans > 10**3:
+    if nearZero(ans):
+        return 0.0
+
+    if ans > 1e6:
         return inf
 
-    if ans < -10**3:
+    if ans < -1e6:
         return -inf
-
+    
     return ans
 
 def sec(x):
 
     ans = 1/np.cos(x)
-    
-    if abs(ans-0.0) <= 10**(-3):
-        return 0.0
-    
-    if abs(ans-1.0) <= 10**(-3):
-        return 1.0
-    
-    if abs(ans+1.0) <= 10**(-3):
-        return -1.0
 
-    if ans > 10**10:
+    if nearZero(ans):
+        return 0.0
+
+    if ans > 1e6:
         return inf
 
-    if ans < -10**10:
+    if ans < -1e6:
         return -inf
 
     return ans
@@ -1127,7 +1117,6 @@ def axisAngle3(omegaTheta):
     return [omegaTheta/float(omegaTheta.norm()), float(omegaTheta.norm())]
 
 def axisAngle6(STheta):
-
     omegaTheta = STheta[0:3,0:3]
     v = STheta[0:3,3]
 
@@ -1233,7 +1222,7 @@ def computeInverseDynamicsTrajectory(thetaMat,dthetaMat,ddthetaMat,gravityVector
     tauMat = thetaMat
 
     for i in range(thetaMat.shape[1]):
-        tauMat[:,i] =  InverseDynamics(thetaMat[:,i], dthetaMat[:,i], ddthetaMat[:,i], gravityVector, FtipMat[:,i], MList, GList, SList)
+        tauMat[:,i] =  computeInverseDynamics(thetaMat[:,i], dthetaMat[:,i], ddthetaMat[:,i], gravityVector, FtipMat[:,i], MList, GList, SList)
 
     tauMat = tauMat.T()
     return tauMat
@@ -1248,8 +1237,8 @@ def computeForwardDynamicsTrajectory(thetaList,dthetaList,tauMat,gravityVector,F
 
     for i in range(tauMat.shape[1] - 1):
         for j in range(intRes):
-            ddthetaList = ForwardDynamics(thetaList, dthetaList, tauMat[:,i], gravityVector, FtipMat[:,i], MList, GList, SList)
-            thetaList,dThetaList = EulerStep(thetaList, dthetaList, ddthetaList, 1.0*dt/intRes)
+            ddthetaList = computeForwardDynamics(thetaList, dthetaList, tauMat[:,i], gravityVector, FtipMat[:,i], MList, GList, SList)
+            thetaList,dThetaList = eulerStep(thetaList, dthetaList, ddthetaList, 1.0*dt/intRes)
         thetaMat[:,i+1] = thetaList
         dthetaMat[:,i+1] = dthetaList
 
@@ -1378,7 +1367,7 @@ def solveExampleProblem1():
     JsList = computeSpaceJacobian(SList,thetaList)
     Vs = computeVelocityKinematicsSpace(JsList,thetaDotList)
     
-    return Tee,SList,JsList,Vs
+    return [Tsb,SList,JsList,Vs]
 
 def solveExampleProblem2():
     [L1,L2,thetaList,omegabList,M,thetaDotList] = generateExample2Inputs()
@@ -1403,7 +1392,7 @@ def solveExampleProblem2():
     JbList = computeBodyJacobian(BList,thetaList)
     Vb = computeVelocityKinematicsBody(JbList,thetaDotList)
 
-    return Tee,BList,JbList,Vb
+    return [Tsb,BList,JbList,Vb]
 
 def solveExampleProblem3():
     [Tsd,M,BList,theta0List,eOmega,eV,numberOfIterations] = generateExample3Inputs()
