@@ -3,10 +3,15 @@ pi = np.pi
 e = np.exp(1)
 inf = np.inf
 np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
+
 class Matrix(object):
 
-    def __init__(self, data, dtype=np.float64):
-        self.data = np.asmatrix(data,dtype=dtype)
+    def __init__(self, data, dtype=np.float64, ndarrayType='matrix'):
+        self.data = None
+        if ndarrayType == 'matrix':
+            self.data = np.asmatrix(data,dtype=dtype)
+        elif ndarrayType == 'tensor':
+            self.data = np.asarray(data,dtype=dtype)
         self.shape = self.data.shape
         self.size = self.size()
         self.T = self.transpose
